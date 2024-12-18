@@ -100,3 +100,7 @@ dependencies {
 
     implementation (libs.androidx.palette.ktx)
 }
+
+kapt {
+    correctErrorTypes = true
+}
