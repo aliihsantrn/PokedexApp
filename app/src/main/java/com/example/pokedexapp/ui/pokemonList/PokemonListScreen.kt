@@ -6,7 +6,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
@@ -22,7 +21,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SearchBar
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -33,9 +31,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.FocusRequester.Companion
-import androidx.compose.ui.focus.FocusRequester.Companion.createRefs
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
@@ -52,6 +47,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.constraintlayout.compose.ConstraintLayout
+import androidx.constraintlayout.compose.Dimension
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import coil3.asDrawable
@@ -84,6 +80,7 @@ fun ImageResizeOnScrollExample(
     maxImageSize: Dp = 250.dp,
     minImageSize: Dp = 100.dp,
     navController: NavController,
+    viewModel: PokemonListViewModel = hiltViewModel()
 ) {
     var currentImageSize by remember { mutableStateOf(maxImageSize) }
     var imageScale by remember { mutableFloatStateOf(1f) }
@@ -106,70 +103,65 @@ fun ImageResizeOnScrollExample(
 
                 // Adjust SearchBar opacity and translation
                 val progress = (currentImageSize - minImageSize) / (maxImageSize - minImageSize)
+
                 searchBarAlpha = progress
-                searchBarTranslationY = (1f - progress) * 50f // Translate by 50px as it fades
+                searchBarTranslationY = (1f - progress) * 50f
 
                 return Offset(0f, consumed.value)
             }
         }
     }
 
-    ConstraintLayout(
-        modifier = modifier
-            .nestedScroll(nestedScrollConnection)
-            .fillMaxSize()
+    Box(modifier = modifier
+        .nestedScroll(nestedScrollConnection)
     ) {
-        val (topElement, middleElement, bottomElement) = createRefs()
-
         Image(
             painter = painterResource(R.drawable.pokemon_logo),
             contentDescription = "Pokemon Logo",
             modifier = Modifier
                 .fillMaxWidth()
-                .constrainAs(topElement) {
-                    top.linkTo(parent.top)
-                    start.linkTo(parent.start)
-                    end.linkTo(parent.end)
-                }
                 .padding(horizontal = 8.dp)
                 .size(maxImageSize)
+                .align(Alignment.TopCenter)
                 .graphicsLayer {
                     scaleX = imageScale
                     scaleY = imageScale
                     // Center the image vertically as it scales
-                    translationY = -(maxImageSize.toPx() - currentImageSize.toPx()) / 2f
+                    translationY = -(maxImageSize.toPx() - currentImageSize.toPx()) / 3f
                 }
         )
+        Box(modifier = modifier
+            .offset {
+                IntOffset(0, (currentImageSize.roundToPx()))
+            }
+        ) {
+            Column {
+                SearchBar(
+                    hint = "Search...",
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                        .graphicsLayer {
+                            alpha = searchBarAlpha
+                            translationY = searchBarTranslationY
+                        }
+                        .then(
+                            if (searchBarAlpha == 0f) {
+                                Modifier.height(0.dp)
+                            } else {
+                                Modifier
+                            }
+                        )
+                ) {
+                    viewModel.searchPokemon(it)
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                DataList(
+                    navController = navController
+                )
+            }
 
-        if (searchBarAlpha > 0f) {
-            SearchBar(
-                hint = "Search...",
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp)
-                    .constrainAs(middleElement) {
-                        top.linkTo(topElement.bottom)
-                        start.linkTo(parent.start)
-                        end.linkTo(parent.end)
-                    }
-                    .graphicsLayer {
-                        alpha = searchBarAlpha
-                        translationY = searchBarTranslationY
-                    }
-            )
         }
-
-        DataList(
-            modifier = Modifier
-                .constrainAs(bottomElement) {
-                    top.linkTo(middleElement.bottom)
-                    start.linkTo(parent.start)
-                    end.linkTo(parent.end)
-                    bottom.linkTo(parent.bottom)
-                },
-            navController = navController,
-            imSize = currentImageSize
-        )
     }
 }
 
@@ -305,23 +297,18 @@ fun PokemonCard(
 fun DataList(
     modifier: Modifier = Modifier,
     navController: NavController,
-    imSize: Dp,
     viewModel: PokemonListViewModel = hiltViewModel()
 ) {
     val pokemonList by remember { viewModel.pokemonList }
     val endReached by remember { viewModel.endReached}
     val loadError by remember { viewModel.loadError}
     val isLoading by remember { viewModel.isLoading }
+    val isSearching by remember { viewModel.isSearching }
 
 
     LazyVerticalGrid(
         columns = GridCells.Fixed(2),
-        modifier = modifier
-            .offset {
-                IntOffset(0, imSize.roundToPx())
-            }
-        ,
-        contentPadding = PaddingValues(4.dp),
+        modifier = modifier,
         content = {
 
             items(pokemonList.size) { index ->
@@ -336,7 +323,7 @@ fun DataList(
                         .fillMaxWidth()
                 )
 
-                if (index >= pokemonList.size - 1 && !endReached) {
+                if (index >= pokemonList.size - 1 && !endReached && !isSearching) {
                     viewModel.loadPokemonList()
                 }
             }

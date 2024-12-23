@@ -18,6 +18,7 @@ import com.example.pokedexapp.util.Constants
 import com.example.pokedexapp.util.Constants.LOAD_LIMIT
 import com.example.pokedexapp.util.Resource
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.util.Locale
 import javax.inject.Inject
@@ -32,6 +33,10 @@ class PokemonListViewModel @Inject constructor(
     var loadError = mutableStateOf("")
     var isLoading = mutableStateOf(false)
     var endReached = mutableStateOf(false)
+
+    var cachedPokemonList = listOf<PokemonListModel>()
+    var isSearchStarting = true
+    var isSearching = mutableStateOf(false)
 
     init {
         loadPokemonList()
@@ -85,6 +90,34 @@ class PokemonListViewModel @Inject constructor(
         Palette.from(bitmap).generate { palette ->
             val dominantColor = palette?.dominantSwatch?.rgb ?: Color.Gray.toArgb()
             onColorCalculated(Color(dominantColor))
+        }
+    }
+
+    fun searchPokemon(query : String) {
+        val searchList = if(isSearchStarting) {
+            pokemonList.value
+        } else {
+            cachedPokemonList
+        }
+
+        viewModelScope.launch(Dispatchers.Default) {
+            if(query.isEmpty()) {
+                pokemonList.value = cachedPokemonList
+                isSearching.value = false
+                isSearchStarting = true
+                return@launch
+            }
+            val result = searchList.filter {
+                it.pokemonName.contains(query.trim(), ignoreCase = true) ||
+                        it.number.toString() == query.trim()
+            }
+            if(isSearchStarting) {
+                cachedPokemonList = pokemonList.value
+                isSearchStarting = false
+            }
+
+            pokemonList.value = result
+            isSearching.value = true
         }
     }
 
