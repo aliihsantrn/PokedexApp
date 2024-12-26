@@ -36,6 +36,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -241,7 +242,7 @@ fun PokemonCard(
             .clickable {
                 println(dominantColor)
                 navController.navigate(
-                    "pokemon_detail_screen/${dominantColor.value.toInt()}/${model.pokemonName}"
+                    "pokemon_detail_screen/${dominantColor.toArgb()}/${model.pokemonName}"
                 )
             }
             .fillMaxSize()
@@ -257,8 +258,9 @@ fun PokemonCard(
                     .build(),
                 contentDescription = "Loaded image",
                 modifier = Modifier
-                    .size(120.dp)
-                    .align(Alignment.CenterHorizontally),
+                    .size(300.dp)
+                    .align(Alignment.CenterHorizontally)
+                    .weight(0.8f),
                 loading = {
                     CircularProgressIndicator(
                         color = MaterialTheme.colorScheme.primary,
@@ -286,8 +288,8 @@ fun PokemonCard(
                 fontSize = 20.sp,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.fillMaxWidth()
+                    .weight(0.18f)
             )
-
         }
 
     }
@@ -313,6 +315,7 @@ fun DataList(
 
             items(pokemonList.size) { index ->
                 val pokemon = pokemonList[index]
+                println(pokemon.pokemonName)
 
                 PokemonCard(
                     model = pokemon,
